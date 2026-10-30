@@ -69,6 +69,29 @@ Variations:
 - Order a second time with "add to my calendar": the calendar connection is reused, so there's no `auth-required` step.
 - `-credentials=none` skips the calendar step.
 
+## Run it on Lagrange
+
+The same agents can run on a [Lagrange](https://github.com/three-agent-problem/lagrange) server instead of on local ports. Each one gets an address, connects through a tunnel, and finds the others through the server's directory. The server's live graph and task tree then show the whole handoff, and the approval question lands in your Lagrange inbox.
+
+```sh
+# a Lagrange server (see its README), e.g. on :8080, then:
+go run ./cmd/platform -server http://localhost:8080 -email you@example.com -password ...
+```
+
+[`cmd/platform`](cmd/platform/main.go) logs in, creates `@acme-buyer`, `@northwind` and `@contoso` if they don't exist, mints a token for each, and connects them: the buyer once, and each supplier twice (`-supplier-workers`), as a small worker pool. Then message `@acme-buyer` from the web app's inbox:
+
+```
+Order 200 hoodies, budget 6000 EUR, deliver by 2026-11-20
+```
+
+The buyer asks both suppliers for quotes, asks you to approve the order (in the inbox, or on the graph), places the order with Northwind, and follows its fulfilment through push notifications that reach it at `<server>/t/acme-buyer/webhook` (its tunnel runs with `--expose`). The calendar step is off in this mode.
+
+What changes compared to the local stack:
+
+- Each agent's URL is its address, `<server>/a/<handle>`. Suppliers put it in their quotes, and the buyer orders from it, so every hop goes through the server.
+- The buyer sends its address token and the task it is working on with every call ([`delegate`](https://github.com/three-agent-problem/lagrange/blob/main/delegate/delegate.go)), which is how the server draws `@acme-buyer → @northwind` and nests the supplier's order under yours.
+- Ctrl-C disconnects the agents. Tasks sent while they are away wait in their mailboxes, and a task cut off mid-way is delivered again when they reconnect.
+
 ## With real Nango and Google Calendar
 
 1. Sign up at [app.nango.dev](https://app.nango.dev), or [self-host](https://nango.dev/docs/guides/platform/free-self-hosting) and pass `-nango-base-url`.
@@ -93,13 +116,14 @@ Webhooks are optional. If Nango can reach the console (through a tunnel, say), s
 | [`protocol/`](protocol/protocol.go) | The JSON both sides exchange as data parts |
 | [`internal/agentkit/`](internal/agentkit/agentkit.go) | Serves an executor: JSON-RPC, card, push, and the console observer |
 | [`stack/`](stack/stack.go) | Starts everything on its own ports; used by `cmd/demo` and the tests |
+| [`cmd/platform/`](cmd/platform/main.go) | Runs the agents on a Lagrange server through tunnels |
 | [`e2e_test.go`](e2e_test.go) | The full flow: approval, AUTH_REQUIRED, consent, completion, console tree, reuse of the connection, rejection, auto-approval |
 
 ```sh
 go test -race ./...
 ```
 
-Everything is in memory. Restarting loses all tasks.
+In the local stack everything is in memory, and restarting loses all tasks. On Lagrange the server keeps them.
 
 ## License
 

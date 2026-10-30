@@ -61,6 +61,12 @@ type Config struct {
 	OrderTimeout time.Duration
 	// AuthTimeout bounds the wait for the user to connect their calendar. Default 10 minutes.
 	AuthTimeout time.Duration
+	// WebhookURL is where suppliers push order updates. Default BaseURL + WebhookPath.
+	// On Lagrange it is the agent's tunnel passthrough, <server>/t/<handle>/webhook.
+	WebhookURL string
+	// CallInterceptors are added to the clients that call suppliers, for example
+	// delegate.Interceptor(token) on Lagrange.
+	CallInterceptors []a2aclient.CallInterceptor
 }
 
 // Agent is the buyer agent.
@@ -93,6 +99,9 @@ func New(cfg Config) *Agent {
 		cfg.AuthTimeout = 10 * time.Minute
 	}
 	cfg.BaseURL = strings.TrimSuffix(cfg.BaseURL, "/")
+	if cfg.WebhookURL == "" {
+		cfg.WebhookURL = cfg.BaseURL + WebhookPath
+	}
 	return &Agent{cfg: cfg, webhookToken: randomID(16), orders: newTracker(), clients: make(map[string]*a2aclient.Client)}
 }
 
@@ -356,7 +365,7 @@ func (a *Agent) order(ctx context.Context, ec *a2asrv.ExecutorContext, plan prot
 		Message: msg,
 		Config: &a2a.SendMessageConfig{
 			ReturnImmediately: true,
-			PushConfig:        &a2a.PushConfig{URL: a.cfg.BaseURL + WebhookPath, Token: a.webhookToken},
+			PushConfig:        &a2a.PushConfig{URL: a.cfg.WebhookURL, Token: a.webhookToken},
 		},
 	})
 	if err != nil {
@@ -496,7 +505,7 @@ func (a *Agent) client(ctx context.Context, agentURL string) (*a2aclient.Client,
 	if err != nil {
 		return nil, err
 	}
-	c, err = a2aclient.NewFromCard(ctx, card)
+	c, err = a2aclient.NewFromCard(ctx, card, a2aclient.WithCallInterceptors(a.cfg.CallInterceptors...))
 	if err != nil {
 		return nil, err
 	}

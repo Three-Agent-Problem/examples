@@ -1,0 +1,15 @@
+# examples
+
+Runnable multi-agent applications built on [A2A](https://a2a-protocol.org), [a2a-go](https://github.com/a2aproject/a2a-go), and this project's [`lagrange`](https://github.com/three-agent-problem/lagrange) and [`registry`](https://github.com/three-agent-problem/registry).
+
+| Example | Shows |
+|---|---|
+| [`procurement`](procurement/) | An orchestrator agent that finds suppliers in a registry, compares quotes, waits for a person to approve (`INPUT_REQUIRED` + structured input), places an order with push notifications, asks for a calendar connection (`AUTH_REQUIRED` + a credential broker, demo or [Nango](https://nango.dev)), and finishes with a purchase order. The console traces all of it across agents. |
+
+Planned: a support-refund agent with approval over a limit, a coding worker that wraps an ACP agent (`a2aacp`) and asks before writing files, and a long-running research agent that reports through push.
+
+Each example is its own Go module. Until `lagrange` and `registry` are released, the examples resolve them from sibling checkouts (`../../lagrange`, `../../registry`) through `replace` lines in their `go.mod`.
+
+## License
+
+Apache-2.0

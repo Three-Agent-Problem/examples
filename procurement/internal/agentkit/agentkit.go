@@ -42,7 +42,9 @@ func Card(name, description, baseURL string, caps a2a.AgentCapabilities, skills 
 }
 
 // Mux returns a mux serving the agent. Callers may add more routes to it.
-func Mux(card *a2a.AgentCard, exec a2asrv.AgentExecutor, obs Observe) *http.ServeMux {
+// opts are added to the request handler's options, for example
+// a2asrv.WithTaskStore(store) with a FileStore so tasks survive a restart.
+func Mux(card *a2a.AgentCard, exec a2asrv.AgentExecutor, obs Observe, opts ...a2asrv.RequestHandlerOption) *http.ServeMux {
 	var store push.ConfigStore = push.NewInMemoryStore()
 	if obs.PushURL != "" {
 		store = observer.Wrap(store, obs.PushURL, obs.Token)
@@ -50,7 +52,7 @@ func Mux(card *a2a.AgentCard, exec a2asrv.AgentExecutor, obs Observe) *http.Serv
 	// Every agent runs on localhost in this example, so the push SSRF guard (spec 13.2)
 	// has to allow private networks. A deployed agent must keep it on.
 	sender := push.NewHTTPPushSender(&push.HTTPSenderConfig{Timeout: 5 * time.Second, AllowPrivateNetworks: true})
-	handler := a2asrv.NewHandler(exec, a2asrv.WithPushNotifications(store, sender))
+	handler := a2asrv.NewHandler(exec, append([]a2asrv.RequestHandlerOption{a2asrv.WithPushNotifications(store, sender)}, opts...)...)
 
 	mux := http.NewServeMux()
 	mux.Handle(InvokePath, a2asrv.NewJSONRPCHandler(handler))

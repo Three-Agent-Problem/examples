@@ -29,11 +29,13 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/a2aproject/a2a-go/v2/a2aclient"
+	"github.com/a2aproject/a2a-go/v2/a2asrv"
 
 	"github.com/three-agent-problem/examples/procurement/buyer"
 	"github.com/three-agent-problem/examples/procurement/internal/agentkit"
@@ -50,8 +52,27 @@ func main() {
 	step := flag.Duration("fulfilment-step", 2*time.Second, "Time between supplier progress updates.")
 	workers := flag.Int("supplier-workers", 2, "Tunnels per supplier (a worker pool).")
 	seeding := flag.Bool("seed", os.Getenv("LAGRANGE_SEED") == "1", "Send a scripted set of orders once the agents are online (env LAGRANGE_SEED=1).")
+	stateDir := flag.String("state", "", "Directory where the agents keep their tasks, so a restart doesn't lose them (default: the user cache dir, per server; \"none\" keeps them in memory).")
 	flag.Parse()
 	*server = strings.TrimSuffix(*server, "/")
+	if *stateDir == "" {
+		*stateDir = defaultStateDir(*server)
+	}
+	if *seeding && *stateDir != "none" {
+		// A seed starts from scratch: the server was just emptied, so old tasks are orphans.
+		_ = os.RemoveAll(*stateDir)
+	}
+	// store gives an agent a task store that survives restarts, as handler options for agentkit.Mux.
+	store := func(handle string) []a2asrv.RequestHandlerOption {
+		if *stateDir == "none" {
+			return nil
+		}
+		s, err := agentkit.NewFileStore(context.Background(), filepath.Join(*stateDir, handle))
+		if err != nil {
+			log.Fatalf("platform: task store for %s: %v", handle, err)
+		}
+		return []a2asrv.RequestHandlerOption{a2asrv.WithTaskStore(s)}
+	}
 	if *email == "" || *password == "" {
 		log.Fatal("platform: -email and -password are required")
 	}
@@ -107,7 +128,7 @@ func main() {
 		{"contoso", supplier.Config{Name: "Contoso Prints", BaseURL: address("contoso"), UnitPrice: 24.00, LeadDays: 30, Step: *step}},
 	} {
 		agent := supplier.New(s.cfg)
-		h := atAddress(s.handle, agentkit.Mux(agent.Card(), agent, agentkit.Observe{}))
+		h := atAddress(s.handle, agentkit.Mux(agent.Card(), agent, agentkit.Observe{}, store(s.handle)...))
 		for range max(1, *workers) {
 			run(s.handle, h, false)
 		}
@@ -119,7 +140,7 @@ func main() {
 		Registry:         regclient.New(*server+"/registry", nil),
 		CallInterceptors: []a2aclient.CallInterceptor{delegate.Interceptor(tokens["acme-buyer"])},
 	})
-	mux := agentkit.Mux(b.Card(), delegate.Executor(b), agentkit.Observe{})
+	mux := agentkit.Mux(b.Card(), delegate.Executor(b), agentkit.Observe{}, store("acme-buyer")...)
 	mux.Handle(buyer.WebhookPath, b.Webhook())
 	run("acme-buyer", atAddress("acme-buyer", mux), true)
 
@@ -220,4 +241,15 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// defaultStateDir is where the agents keep tasks for server: the user cache dir, one
+// folder per server so two dev servers don't share tasks.
+func defaultStateDir(server string) string {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		base = os.TempDir()
+	}
+	host := strings.NewReplacer("://", "_", ":", "_", "/", "_").Replace(server)
+	return filepath.Join(base, "three-agent-problem", "procurement", host)
 }

@@ -78,7 +78,7 @@ The same agents can run on a [Lagrange](https://github.com/three-agent-problem/l
 go run ./cmd/platform -server http://localhost:8080 -email you@example.com -password ...
 ```
 
-[`cmd/platform`](cmd/platform/main.go) logs in, creates `@acme-buyer`, `@northwind` and `@contoso` if they don't exist, mints a token for each, and connects them: the buyer once, and each supplier twice (`-supplier-workers`), as a small worker pool. Then message `@acme-buyer` from the web app's inbox:
+[`cmd/platform`](cmd/platform/main.go) logs in, creates `@acme-buyer`, `@northwind` and `@contoso` if they don't exist, mints a token for each, and connects them: the buyer once, and each supplier twice (`-supplier-workers`), as a small worker pool. The agents keep their tasks on disk (`-state`, default: the user cache dir, one folder per server; `agentkit.FileStore`), so an approval still waiting when you restart them can be answered afterwards. `-seed` also sends a scripted set of orders. Then message `@acme-buyer` from the web app's inbox:
 
 ```
 Order 200 hoodies, budget 6000 EUR, deliver by 2026-11-20

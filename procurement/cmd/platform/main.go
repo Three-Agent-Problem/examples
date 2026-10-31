@@ -6,6 +6,10 @@
 //	lagrange serve   # or the docker compose stack
 //	go run ./cmd/platform -server http://localhost:8090 -email you@example.com -password ...
 //
+// With -seed it also sends a scripted set of orders (approved, auto-approved, rejected,
+// failed, one left waiting for you, a plain message). A dev server can run it for you:
+// LAGRANGE_DEV=1 LAGRANGE_DEV_SEED="path/to/platform" lagrange serve.
+//
 // It logs in with a Lagrange account, creates the addresses @acme-buyer, @northwind and
 // @contoso if they don't exist, and mints a fresh token for each. Then message
 // @acme-buyer from the web app's inbox: "Order 200 hoodies, budget 6000 EUR, deliver by
@@ -45,6 +49,7 @@ func main() {
 	password := flag.String("password", os.Getenv("LAGRANGE_ADMIN_PASSWORD"), "Lagrange account password.")
 	step := flag.Duration("fulfilment-step", 2*time.Second, "Time between supplier progress updates.")
 	workers := flag.Int("supplier-workers", 2, "Tunnels per supplier (a worker pool).")
+	seeding := flag.Bool("seed", os.Getenv("LAGRANGE_SEED") == "1", "Send a scripted set of orders once the agents are online (env LAGRANGE_SEED=1).")
 	flag.Parse()
 	*server = strings.TrimSuffix(*server, "/")
 	if *email == "" || *password == "" {
@@ -54,7 +59,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	api, err := login(ctx, *server, *email, *password)
+	// Retry for a while: as a dev server's seed command, this starts before the server listens.
+	var api *apiClient
+	var err error
+	for try := 0; ; try++ {
+		if api, err = login(ctx, *server, *email, *password); err == nil || try == 60 || ctx.Err() != nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 	if err != nil {
 		log.Fatalf("platform: %v", err)
 	}
@@ -109,6 +122,10 @@ func main() {
 	mux := agentkit.Mux(b.Card(), delegate.Executor(b), agentkit.Observe{})
 	mux.Handle(buyer.WebhookPath, b.Webhook())
 	run("acme-buyer", atAddress("acme-buyer", mux), true)
+
+	if *seeding {
+		go seed(ctx, api, []string{"acme-buyer", "northwind", "contoso"})
+	}
 
 	deliverBy := time.Now().AddDate(0, 0, 21).Format("2006-01-02")
 	fmt.Printf(`

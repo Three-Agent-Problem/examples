@@ -15,3 +15,8 @@ go.work.sum
 .DS_Store
 .idea/
 .vscode/
+
+# Quickstarts: Node and Python dependencies
+node_modules/
+__pycache__/
+.venv/

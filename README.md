@@ -4,6 +4,7 @@ Runnable multi-agent applications built on [A2A](https://a2a-protocol.org), [a2a
 
 | Example | Shows |
 |---|---|
+| [`quickstart`](quickstart/) | The smallest A2A agent in Python (`a2a-sdk`) and TypeScript (`@a2a-js/sdk`), connected to Lagrange with `lagrange tunnel --to`. Start here to put your own agent on Lagrange. |
 | [`procurement`](procurement/) | An orchestrator agent that finds suppliers in a registry, compares quotes, waits for a person to approve (`INPUT_REQUIRED` + structured input), places an order with push notifications, asks for a calendar connection (`AUTH_REQUIRED` + a credential broker, demo or [Nango](https://nango.dev)), and finishes with a purchase order. The console traces all of it across agents. The same agents also run on a Lagrange server through tunnels (`procurement/cmd/platform`). |
 
 Planned: a support-refund agent with approval over a limit, a coding worker that wraps an ACP agent (`a2aacp`) and asks before writing files, and a long-running research agent that reports through push.

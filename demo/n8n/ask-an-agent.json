@@ -1,0 +1,35 @@
+{
+  "id": "askagent0000001",
+  "name": "3. Ask a Lagrange agent (n8n → Lagrange)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "d1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Start (GET /webhook/ask-refunds)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "5b7f6a1e-0004-4000-8000-000000000004",
+      "parameters": { "httpMethod": "GET", "path": "ask-refunds", "responseMode": "lastNode", "options": {} }
+    },
+    {
+      "id": "d1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Send to @refunds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "__LAGRANGE__/api/send",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer __KEY__" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: 'refunds', text: JSON.stringify({ order: $json.query.order || 'N-1', amount: Number($json.query.amount || 30) }) }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": { "Start (GET /webhook/ask-refunds)": { "main": [[{ "node": "Send to @refunds", "type": "main", "index": 0 }]] } },
+  "settings": { "executionOrder": "v1" }
+}

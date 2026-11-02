@@ -1,0 +1,36 @@
+{
+  "id": "lgevents0000001",
+  "name": "2. Lagrange events (Lagrange → n8n)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "c1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Lagrange webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "5b7f6a1e-0003-4000-8000-000000000003",
+      "parameters": { "httpMethod": "POST", "path": "lagrange-events", "responseMode": "onReceived", "options": {} }
+    },
+    {
+      "id": "c1b2c3d4-0002-4000-8000-000000000002",
+      "name": "What happened",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [260, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "e1", "name": "event", "value": "={{ $json.body.type }}", "type": "string" },
+            { "id": "e2", "name": "agent", "value": "={{ $json.body.data.to }}", "type": "string" },
+            { "id": "e3", "name": "question", "value": "={{ $json.body.data.question || '' }}", "type": "string" },
+            { "id": "e4", "name": "link", "value": "={{ $json.body.data.url }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": { "Lagrange webhook": { "main": [[{ "node": "What happened", "type": "main", "index": 0 }]] } },
+  "settings": { "executionOrder": "v1" }
+}

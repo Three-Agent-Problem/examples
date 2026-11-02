@@ -1,0 +1,30 @@
+{
+  "id": "orderdesk0000001",
+  "name": "1. Order desk (an agent on Lagrange)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Lagrange message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "5b7f6a1e-0001-4000-8000-000000000001",
+      "parameters": { "httpMethod": "POST", "path": "orders", "responseMode": "responseNode", "options": {} }
+    },
+    {
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [260, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => { const b = $json.body; if (b.answer) { return (b.data && b.data.approved) ? { output: 'Approved: the order is placed.', status: 'ordered' } : { output: 'Not approved: the order is cancelled.', status: 'cancelled' }; } const m = (b.text || '').match(/\\d+/); const qty = m ? Number(m[0]) : 0; if (qty > 100) { return { ask: 'Approve an order of ' + qty + ' units? (' + b.text + ')', schema: { type: 'object', properties: { approved: { type: 'boolean' } }, required: ['approved'] } }; } return { output: 'Order placed: ' + b.text, status: 'ordered', quantity: qty }; })() }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": { "Lagrange message": { "main": [[{ "node": "Reply", "type": "main", "index": 0 }]] } },
+  "settings": { "executionOrder": "v1" }
+}

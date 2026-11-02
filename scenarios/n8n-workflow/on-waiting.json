@@ -1,0 +1,33 @@
+{
+  "id": "onwaiting000001",
+  "name": "Lagrange events → my service",
+  "active": false,
+  "nodes": [
+    {
+      "id": "b1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Lagrange event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "5b7f6a1e-0002-4000-8000-000000000002",
+      "parameters": { "httpMethod": "POST", "path": "lagrange-events", "responseMode": "onReceived", "options": {} }
+    },
+    {
+      "id": "b1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Post to my service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:9078/notify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: 'n8n', event: $json.body }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": { "Lagrange event": { "main": [[{ "node": "Post to my service", "type": "main", "index": 0 }]] } },
+  "settings": { "executionOrder": "v1" }
+}
